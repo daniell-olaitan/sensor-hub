@@ -1,0 +1,23 @@
+connection:
+  max_connections: 50
+  socket_timeout: 5
+  socket_connect_timeout: 5
+  retry_on_timeout: true
+  health_check_interval: 30
+
+keyspace:
+  devices: "device:{device_id}"
+  device_cache: "cache:device:{device_id}"
+  telemetry: "telemetry:{device_id}:{timestamp}"
+  alerts: "alert:{alert_id}"
+  firmware: "firmware:{update_id}"
+  locks: "lock:{resource}"
+  idempotency: "idempotent:{key}"
+  rate_limit: "ratelimit:{identifier}:{window}"
+  events: "events:{topic}"
+
+ttl:
+  device_cache: 300
+  idempotency: 3600
+  rate_limit: 60
+  telemetry: 86400
