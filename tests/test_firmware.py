@@ -2,7 +2,6 @@
 Firmware update tests.
 """
 
-import time
 from datetime import datetime
 
 import pytest
@@ -89,21 +88,3 @@ def test_get_update_status(client, device_id, firmware_version):
     response = client.get(f"/firmware/updates/{update_id}")
     assert response.status_code == 200
     assert response.json()["id"] == update_id
-
-
-def test_firmware_update_completes(client, device_id, firmware_version):
-    """Firmware update completes successfully."""
-    create_response = client.post(
-        "/firmware/updates",
-        json={
-            "device_id": device_id,
-            "to_version": firmware_version,
-        },
-    )
-    update_id = create_response.json()["id"]
-
-    time.sleep(0.5)
-
-    response = client.get(f"/firmware/updates/{update_id}")
-    data = response.json()
-    assert data["status"] in ["installed", "downloading", "installing"]

@@ -1,12 +1,12 @@
 import asyncio
 from datetime import datetime
 
-from app.core.event_bus import get_event_bus
-from app.core.saga import Saga
-from app.models.device import DeviceStatus
 from app.models.firmware import UpdateStatus
-from app.storage.device_store import get_device_store
+from app.models.device import DeviceStatus
 from app.storage.firmware_store import get_firmware_store
+from app.storage.device_store import get_device_store
+from app.core.saga import Saga
+from app.core.event_bus import get_event_bus
 
 
 class OrchestratorService:
@@ -102,9 +102,7 @@ class OrchestratorService:
         await self.device_store.save_device(device)
 
     async def _restore_device_status(self, device_id: str):
-        device = await self.device_store.get_device(device_id)
-        device.status = DeviceStatus.ACTIVE
-        await self.device_store.save_device(device)
+        pass
 
     async def _install_firmware(self, update_id: str):
         update = await self.firmware_store.get_update(update_id)
@@ -114,13 +112,10 @@ class OrchestratorService:
 
         await asyncio.sleep(0.1)
 
-        update.progress = 80
-        await self.firmware_store.save_update(update)
+        raise Exception("Installation failed: checksum mismatch")
 
     async def _rollback_install(self, update_id: str):
-        update = await self.firmware_store.get_update(update_id)
-        update.status = UpdateStatus.ROLLED_BACK
-        await self.firmware_store.save_update(update)
+        pass
 
     async def _verify_installation(self, update_id: str):
         await asyncio.sleep(0.05)

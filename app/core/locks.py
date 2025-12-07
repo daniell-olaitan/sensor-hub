@@ -1,9 +1,9 @@
 import asyncio
-from typing import Optional
 from contextlib import asynccontextmanager
+from typing import Optional
 
-from app.core.redis_client import get_redis_client
 from app.config.settings import get_settings
+from app.core.redis_client import get_redis_client
 
 
 class DistributedLock:
@@ -23,9 +23,8 @@ class DistributedLock:
         await self.initialize()
 
         import uuid
-        self.lock_value = str(uuid.uuid4())
 
-        await asyncio.sleep(0.01)
+        self.lock_value = str(uuid.uuid4())
 
         acquired = await self.redis.set(
             self.lock_key, self.lock_value, nx=True, ex=self.timeout
@@ -47,9 +46,7 @@ class DistributedLock:
         end
         """
 
-        result = await self.redis.eval(
-            lua_script, 1, self.lock_key, self.lock_value
-        )
+        result = await self.redis.eval(lua_script, 1, self.lock_key, self.lock_value)
 
         return bool(result)
 

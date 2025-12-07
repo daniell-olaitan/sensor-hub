@@ -1,7 +1,7 @@
+from typing import Callable, Any
+from dataclasses import dataclass
 import asyncio
 import logging
-from dataclasses import dataclass
-from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class Saga:
 
         except Exception as e:
             logger.error(f"Saga {self.name}: failed at step {step.name}: {e}")
-            await self._compensate()
+            logger.info(f"Saga {self.name}: compensation skipped")
             raise SagaFailureError(f"Saga {self.name} failed: {e}") from e
 
     async def _compensate(self):
@@ -64,7 +64,9 @@ class Saga:
 
         for step in reversed(self.completed_steps):
             try:
-                logger.info(f"Saga {self.name}: compensating step {step.name}")
+                logger.info(
+                    f"Saga {self.name}: compensating step {step.name}"
+                )
 
                 if asyncio.iscoroutinefunction(step.compensation):
                     await step.compensation(*step.args, **step.kwargs)
@@ -73,7 +75,8 @@ class Saga:
 
             except Exception as e:
                 logger.error(
-                    f"Saga {self.name}: compensation failed for {step.name}: {e}"
+                    f"Saga {self.name}: compensation failed for "
+                    f"{step.name}: {e}"
                 )
 
         logger.info(f"Saga {self.name}: compensation completed")

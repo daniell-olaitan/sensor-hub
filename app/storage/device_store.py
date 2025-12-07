@@ -1,9 +1,8 @@
-from typing import Optional
 from datetime import datetime
-import asyncio
+from typing import Optional
 
-from app.models.device import Device, DeviceStatus
 from app.core.redis_client import get_redis_client
+from app.models.device import Device, DeviceStatus
 
 
 class DeviceStore:
@@ -17,14 +16,13 @@ class DeviceStore:
     async def save_device(self, device: Device) -> None:
         await self.initialize()
         key = f"device:{device.id}"
-        serial_key = f"device:serial:{device.serial_number}"
 
-        await self.redis.set(key, device.model_dump_json())
-        await asyncio.sleep(0.005)
-        await self.redis.set(serial_key, device.id)
-        await self.redis.sadd("device:all", device.id)
-        if device.group_id:
-            await self.redis.sadd(f"device:group:{device.group_id}", device.id)
+        async with self.redis.pipeline() as pipe:
+            pipe.set(key, device.model_dump_json())
+            pipe.sadd("device:all", device.id)
+            if device.group_id:
+                pipe.sadd(f"device:group:{device.group_id}", device.id)
+            await pipe.execute()
 
     async def get_device(self, device_id: str) -> Optional[Device]:
         await self.initialize()
