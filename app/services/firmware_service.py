@@ -1,11 +1,16 @@
-from datetime import datetime
 import uuid
+from datetime import datetime
 
-from app.models.firmware import FirmwareUpdate, FirmwareUpdateRequest, UpdateStatus, FirmwareMetadata
-from app.storage.firmware_store import get_firmware_store
+from app.core.event_bus import get_event_bus
+from app.models.firmware import (
+    FirmwareMetadata,
+    FirmwareUpdate,
+    FirmwareUpdateRequest,
+    UpdateStatus,
+)
 from app.services.device_service import get_device_service
 from app.services.orchestrator_service import get_orchestrator_service
-from app.core.event_bus import get_event_bus
+from app.storage.firmware_store import get_firmware_store
 
 
 class FirmwareService:
@@ -15,9 +20,7 @@ class FirmwareService:
         self.orchestrator = get_orchestrator_service()
         self.event_bus = get_event_bus()
 
-    async def initiate_update(
-        self, request: FirmwareUpdateRequest
-    ) -> FirmwareUpdate:
+    async def initiate_update(self, request: FirmwareUpdateRequest) -> FirmwareUpdate:
         device = await self.device_service.get_device(request.device_id)
 
         existing = await self.store.get_device_update(request.device_id)

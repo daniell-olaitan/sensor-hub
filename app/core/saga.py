@@ -1,7 +1,7 @@
-from typing import Callable, Any
-from dataclasses import dataclass
 import asyncio
 import logging
+from dataclasses import dataclass
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,6 @@ class Saga:
 
         try:
             for step in self.steps:
-                logger.info(f"Saga {self.name}: executing step {step.name}")
-
                 if asyncio.iscoroutinefunction(step.action):
                     result = await step.action(*step.args, **step.kwargs)
                 else:
@@ -51,35 +49,24 @@ class Saga:
 
                 self.completed_steps.append(step)
 
-            logger.info(f"Saga {self.name}: completed successfully")
             return result
 
         except Exception as e:
-            logger.error(f"Saga {self.name}: failed at step {step.name}: {e}")
-            logger.info(f"Saga {self.name}: compensation skipped")
+            await self._compensate()
             raise SagaFailureError(f"Saga {self.name} failed: {e}") from e
 
     async def _compensate(self):
-        logger.info(f"Saga {self.name}: starting compensation")
-
         for step in reversed(self.completed_steps):
             try:
-                logger.info(
-                    f"Saga {self.name}: compensating step {step.name}"
-                )
-
                 if asyncio.iscoroutinefunction(step.compensation):
-                    await step.compensation(*step.args, **step.kwargs)
+                    step.compensation(*step.args, **step.kwargs)
                 else:
                     step.compensation(*step.args, **step.kwargs)
 
             except Exception as e:
                 logger.error(
-                    f"Saga {self.name}: compensation failed for "
-                    f"{step.name}: {e}"
+                    f"Saga {self.name}: compensation failed for {step.name}: {e}"
                 )
-
-        logger.info(f"Saga {self.name}: compensation completed")
 
 
 class SagaFailureError(Exception):

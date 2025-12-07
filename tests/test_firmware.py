@@ -1,7 +1,6 @@
 """
 Firmware update tests.
 """
-
 from datetime import datetime
 
 import pytest

@@ -1,7 +1,7 @@
 from typing import Optional
 
-from app.models.firmware import FirmwareUpdate, UpdateStatus, FirmwareMetadata
 from app.core.redis_client import get_redis_client
+from app.models.firmware import FirmwareMetadata, FirmwareUpdate, UpdateStatus
 
 
 class FirmwareStore:
@@ -16,17 +16,20 @@ class FirmwareStore:
         await self.initialize()
         key = f"firmware:update:{update.id}"
 
-        await self.redis.set(key, update.model_dump_json())
-        await self.redis.set(f"firmware:device:{update.device_id}", update.id)
+        async with self.redis.pipeline() as pipe:
+            pipe.set(key, update.model_dump_json())
+            pipe.set(f"firmware:device:{update.device_id}", update.id)
 
-        if update.status == UpdateStatus.PENDING:
-            await self.redis.sadd("firmware:pending", update.id)
-        elif update.status in [
-            UpdateStatus.INSTALLED,
-            UpdateStatus.FAILED,
-            UpdateStatus.ROLLED_BACK,
-        ]:
-            await self.redis.srem("firmware:pending", update.id)
+            if update.status == UpdateStatus.PENDING:
+                pipe.sadd("firmware:pending", update.id)
+            elif update.status in [
+                UpdateStatus.INSTALLED,
+                UpdateStatus.FAILED,
+                UpdateStatus.ROLLED_BACK,
+            ]:
+                pipe.srem("firmware:pending", update.id)
+
+            await pipe.execute()
 
     async def get_update(self, update_id: str) -> Optional[FirmwareUpdate]:
         await self.initialize()
@@ -35,9 +38,7 @@ class FirmwareStore:
             return None
         return FirmwareUpdate.model_validate_json(data)
 
-    async def get_device_update(
-        self, device_id: str
-    ) -> Optional[FirmwareUpdate]:
+    async def get_device_update(self, device_id: str) -> Optional[FirmwareUpdate]:
         await self.initialize()
         update_id = await self.redis.get(f"firmware:device:{device_id}")
         if not update_id:
