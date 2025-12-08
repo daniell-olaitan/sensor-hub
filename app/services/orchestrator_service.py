@@ -70,7 +70,8 @@ class OrchestratorService:
             )
 
         except Exception as e:
-            update.status = UpdateStatus.FAILED
+            update = await self.firmware_store.get_update(update_id)
+            update.status = UpdateStatus.ROLLED_BACK
             update.error = str(e)
             update.completed_at = datetime.utcnow()
             await self.firmware_store.save_update(update)
@@ -93,16 +94,21 @@ class OrchestratorService:
         update.progress = 30
         await self.firmware_store.save_update(update)
 
+        return {"update_id": update_id}
+
     async def _rollback_download(self, update_id: str):
-        update = await self.firmware_store.get_update(update_id)
-        update.status = UpdateStatus.ROLLED_BACK
-        await self.firmware_store.save_update(update)
+        pass
 
     async def _set_device_maintenance(self, device_id: str):
         device = await self.device_store.get_device(device_id)
 
-        original_status = device.status
-        original_metadata = device.metadata.copy()
+        original_context = {
+            "device_id": device_id,
+            "original_status": device.status,
+            "original_metadata": device.metadata,
+        }
+
+        await asyncio.sleep(0.05)
 
         device.metadata["update_attempt_count"] = device.metadata.get(
             "update_attempt_count", 0
@@ -111,6 +117,8 @@ class OrchestratorService:
         device.metadata["maintenance_reason"] = "firmware_update"
         device.status = DeviceStatus.MAINTENANCE
         await self.device_store.save_device(device)
+
+        return original_context
 
     async def _restore_device_status(self, device_id: str):
         device = await self.device_store.get_device(device_id)
@@ -122,7 +130,11 @@ class OrchestratorService:
         update = await self.firmware_store.get_update(update_id)
         device = await self.device_store.get_device(update.device_id)
 
-        original_version = device.firmware_version
+        original_context = {
+            "update_id": update_id,
+            "device_id": update.device_id,
+            "original_version": update.from_version,
+        }
 
         update.status = UpdateStatus.INSTALLING
         update.progress = 50
@@ -137,15 +149,15 @@ class OrchestratorService:
         update.progress = 80
         await self.firmware_store.save_update(update)
 
+        return original_context
+
     async def _rollback_install(self, update_id: str):
         update = await self.firmware_store.get_update(update_id)
         device = await self.device_store.get_device(update.device_id)
 
+        device.firmware_version = update.from_version
         device.metadata.pop("last_firmware_update", None)
         await self.device_store.save_device(device)
-
-        update.status = UpdateStatus.ROLLED_BACK
-        await self.firmware_store.save_update(update)
 
     async def _verify_installation(self, update_id: str):
         await asyncio.sleep(0.05)

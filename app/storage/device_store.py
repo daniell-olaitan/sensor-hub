@@ -14,6 +14,9 @@ class DeviceStore:
         if not self.redis:
             self.redis = await get_redis_client()
 
+    async def clear_cache(self, device_id: str):
+        pass
+
     async def save_device(self, device: Device) -> None:
         await self.initialize()
         key = f"device:{device.id}"

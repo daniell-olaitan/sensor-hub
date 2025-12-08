@@ -18,6 +18,7 @@ class UpdateStatus(str, Enum):
 class FirmwareUpdate(BaseModel):
     id: str
     device_id: str
+    from_version: str
     to_version: str
     status: UpdateStatus
     progress: int = 0
