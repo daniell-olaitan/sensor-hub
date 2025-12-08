@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,6 @@ class SagaStep:
     compensation: Callable
     args: tuple = ()
     kwargs: dict = None
-    context: Optional[dict] = None
 
     def __post_init__(self):
         if self.kwargs is None:
@@ -50,7 +49,6 @@ class Saga:
                 else:
                     result = step.action(*step.args, **step.kwargs)
 
-                step.context = result
                 self.completed_steps.append(step)
 
             logger.info(f"Saga {self.name}: completed successfully")

@@ -8,14 +8,10 @@ from app.models.device import Device, DeviceStatus
 class DeviceStore:
     def __init__(self):
         self.redis = None
-        self._device_cache = {}
 
     async def initialize(self):
         if not self.redis:
             self.redis = await get_redis_client()
-
-    async def clear_cache(self, device_id: str):
-        pass
 
     async def save_device(self, device: Device) -> None:
         await self.initialize()
@@ -28,20 +24,13 @@ class DeviceStore:
                 pipe.sadd(f"device:group:{device.group_id}", device.id)
             await pipe.execute()
 
-        self._device_cache[device.id] = device
-
     async def get_device(self, device_id: str) -> Optional[Device]:
-        if device_id in self._device_cache:
-            return self._device_cache[device_id]
-
         await self.initialize()
         key = f"device:{device_id}"
         data = await self.redis.get(key)
         if not data:
             return None
-        device = Device.model_validate_json(data)
-        self._device_cache[device_id] = device
-        return device
+        return Device.model_validate_json(data)
 
     async def get_device_by_serial(self, serial: str) -> Optional[Device]:
         await self.initialize()

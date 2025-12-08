@@ -2,6 +2,7 @@ from typing import Optional
 
 from app.core.event_bus import get_event_bus
 from app.core.rate_limiter import get_rate_limiter
+from app.core.redis_client import get_redis_client
 from app.models.telemetry import TelemetryBatch, TelemetryPoint, TelemetryQuery
 from app.services.alert_service import get_alert_service
 from app.services.device_service import get_device_service
@@ -25,6 +26,12 @@ class TelemetryService:
             raise ValueError(f"Rate limit exceeded for device {point.device_id}")
 
         await self.store.save_point(point)
+
+        redis = await get_redis_client()
+        current_bytes = await redis.get("analytics:global:message_count")
+        current = int(current_bytes) if current_bytes else 0
+        await redis.set("analytics:global:message_count", current + 1)
+
         await self.device_service.mark_active(point.device_id)
 
         await self.alert_service.check_alerts(point)
@@ -48,6 +55,12 @@ class TelemetryService:
             raise ValueError(f"Rate limit exceeded for device {batch.device_id}")
 
         await self.store.save_batch(batch.points)
+
+        redis = await get_redis_client()
+        current_bytes = await redis.get("analytics:global:message_count")
+        current = int(current_bytes) if current_bytes else 0
+        await redis.set("analytics:global:message_count", current + len(batch.points))
+
         await self.device_service.mark_active(batch.device_id)
 
         for point in batch.points:

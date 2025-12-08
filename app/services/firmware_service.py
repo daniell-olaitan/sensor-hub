@@ -39,7 +39,7 @@ class FirmwareService:
         update = FirmwareUpdate(
             id=str(uuid.uuid4()),
             device_id=request.device_id,
-            from_version=request.to_version,
+            from_version=device.firmware_version,
             to_version=request.to_version,
             status=UpdateStatus.PENDING,
             started_at=datetime.utcnow(),

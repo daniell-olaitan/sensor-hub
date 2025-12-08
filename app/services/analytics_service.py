@@ -1,3 +1,4 @@
+from app.core.redis_client import get_redis_client
 from app.models.analytics import DeviceMetrics, FleetAnalytics, GroupAnalytics
 from app.models.device import DeviceStatus
 from app.storage.alert_store import get_alert_store
@@ -42,10 +43,12 @@ class AnalyticsService:
         active_devices = sum(1 for d in devices if d.status == DeviceStatus.ACTIVE)
         inactive_devices = total_devices - active_devices
 
-        total_messages = 0
+        redis = await get_redis_client()
+        total_messages_bytes = await redis.get("analytics:global:message_count")
+        total_messages = int(total_messages_bytes) if total_messages_bytes else 0
+
         total_uptime = 0
         for device in devices:
-            total_messages += await self.telemetry_store.get_message_count(device.id)
             if device.last_seen and device.registered_at:
                 total_uptime += int(
                     (device.last_seen - device.registered_at).total_seconds()
