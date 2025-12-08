@@ -16,6 +16,12 @@ class FirmwareStore:
         await self.initialize()
         key = f"firmware:update:{update.id}"
 
+        existing_data = await self.redis.get(key)
+        if existing_data:
+            existing = FirmwareUpdate.model_validate_json(existing_data)
+            if existing.status == UpdateStatus.FAILED:
+                return
+
         async with self.redis.pipeline() as pipe:
             pipe.set(key, update.model_dump_json())
             pipe.set(f"firmware:device:{update.device_id}", update.id)

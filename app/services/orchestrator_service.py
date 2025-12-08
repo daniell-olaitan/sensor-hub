@@ -14,8 +14,6 @@ class OrchestratorService:
         self.firmware_store = get_firmware_store()
         self.device_store = get_device_store()
         self.event_bus = get_event_bus()
-        self.original_status = {}
-        self.original_version = {}
 
     async def orchestrate_firmware_update(self, update_id: str):
         update = await self.firmware_store.get_update(update_id)
@@ -102,20 +100,29 @@ class OrchestratorService:
 
     async def _set_device_maintenance(self, device_id: str):
         device = await self.device_store.get_device(device_id)
-        self.original_version[device_id] = device.firmware_version
+
+        original_status = device.status
+        original_metadata = device.metadata.copy()
+
+        device.metadata["update_attempt_count"] = device.metadata.get(
+            "update_attempt_count", 0
+        ) + 1
+        device.metadata["last_update_attempt"] = datetime.utcnow().isoformat()
+        device.metadata["maintenance_reason"] = "firmware_update"
         device.status = DeviceStatus.MAINTENANCE
         await self.device_store.save_device(device)
-        self.original_status[device_id] = device.status
 
     async def _restore_device_status(self, device_id: str):
         device = await self.device_store.get_device(device_id)
-        if device_id in self.original_status:
-            device.status = self.original_status[device_id]
-            await self.device_store.save_device(device)
+        device.status = DeviceStatus.ACTIVE
+        device.metadata.pop("maintenance_reason", None)
+        await self.device_store.save_device(device)
 
     async def _install_firmware(self, update_id: str):
         update = await self.firmware_store.get_update(update_id)
         device = await self.device_store.get_device(update.device_id)
+
+        original_version = device.firmware_version
 
         update.status = UpdateStatus.INSTALLING
         update.progress = 50
@@ -124,6 +131,7 @@ class OrchestratorService:
         await asyncio.sleep(0.1)
 
         device.firmware_version = update.to_version
+        device.metadata["last_firmware_update"] = datetime.utcnow().isoformat()
         await self.device_store.save_device(device)
 
         update.progress = 80
@@ -133,9 +141,8 @@ class OrchestratorService:
         update = await self.firmware_store.get_update(update_id)
         device = await self.device_store.get_device(update.device_id)
 
-        if update.device_id in self.original_version:
-            device.firmware_version = self.original_version[update.device_id]
-            await self.device_store.save_device(device)
+        device.metadata.pop("last_firmware_update", None)
+        await self.device_store.save_device(device)
 
         update.status = UpdateStatus.ROLLED_BACK
         await self.firmware_store.save_update(update)

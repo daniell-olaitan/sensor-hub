@@ -2,12 +2,7 @@ import uuid
 from datetime import datetime
 
 from app.core.event_bus import get_event_bus
-from app.models.firmware import (
-    FirmwareMetadata,
-    FirmwareUpdate,
-    FirmwareUpdateRequest,
-    UpdateStatus,
-)
+from app.models.firmware import FirmwareMetadata, FirmwareUpdate, FirmwareUpdateRequest, UpdateStatus
 from app.services.device_service import get_device_service
 from app.services.orchestrator_service import get_orchestrator_service
 from app.storage.firmware_store import get_firmware_store
@@ -39,7 +34,6 @@ class FirmwareService:
         update = FirmwareUpdate(
             id=str(uuid.uuid4()),
             device_id=request.device_id,
-            from_version=device.firmware_version,
             to_version=request.to_version,
             status=UpdateStatus.PENDING,
             started_at=datetime.utcnow(),

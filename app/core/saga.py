@@ -59,7 +59,7 @@ class Saga:
         for step in reversed(self.completed_steps):
             try:
                 if asyncio.iscoroutinefunction(step.compensation):
-                    step.compensation(*step.args, **step.kwargs)
+                    await step.compensation(*step.args, **step.kwargs)
                 else:
                     step.compensation(*step.args, **step.kwargs)
 
